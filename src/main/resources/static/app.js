@@ -9,10 +9,17 @@ const submitBtn = document.getElementById('snip-btn');
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const url = input.value.trim();
-  if (!url || submitBtn.disabled) return;
+  if (submitBtn.disabled) return;
 
   errorEl.hidden = true;
   result.hidden = true;
+
+  if (!url) {
+    errorEl.textContent = 'please enter a URL to shorten';
+    errorEl.hidden = false;
+    return;
+  }
+
   submitBtn.disabled = true;
 
   try {
