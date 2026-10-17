@@ -1,0 +1,14 @@
+name: keep-alive
+
+on:
+  schedule:
+    # Every 10 minutes (UTC) — safely under Render free tier's ~15 min sleep.
+    - cron: '*/13 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render health endpoint
+        run: curl -fsS --max-time 90 https://snip.soumikseth.in/actuator/health

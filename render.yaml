@@ -1,0 +1,35 @@
+# Render blueprint — starting point (Docker + managed Postgres).
+# Redis (Upstash, free tier) is configured manually in the dashboard.
+services:
+  - type: web
+    name: snip
+    runtime: docker
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: APP_BASE_URL
+        value: https://snip.soumikseth.in
+      - key: ADMIN_PASSWORD
+        value: change-me-please
+      - key: SHORT_CODE_SEED
+        value: "42"
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: snip-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: snip-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: snip-db
+          property: password
+      # Upstash Redis (TLS). Set your full rediss:// URL here.
+      - key: REDIS_URL
+        value: rediss://default:YOUR_PASSWORD@YOUR_HOST.upstash.io:6379
+
+databases:
+  - name: snip-db
+    plan: free
+    databaseName: snip
