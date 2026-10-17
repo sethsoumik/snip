@@ -1,0 +1,11 @@
+target/
+*.class
+*.log
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.env
+# real local config (copy application-example.yml to application.yml)
+application.yml
+src/main/resources/application.yml
