@@ -137,6 +137,37 @@ GET /{slug}
 - Click counting is fire-and-forget on a small bounded pool, so it adds nothing
   to redirect latency.
 
+### Cache design: why Redis cache-aside, and nothing else
+
+**What it is** — a remote, distributed cache (L2) using Redis, filled lazily on the
+read path. There's deliberately no L1 in-process cache.
+
+**Why cache-aside (not write-through / write-behind)** — reads dominate this
+workload; creates are rare relative to redirects. Cache-aside only touches the
+cache when a redirect actually happens, so we never pre-warm keys nobody clicks or
+pay a cache write on the create path. Write-through would add a Redis write to
+every create and complicate failure handling; write-behind means queuing writes
+and accepting eventual-consistency risk for no real gain here.
+
+**Why Redis (L2) and not a local cache (L1)** — the service is stateless and meant
+to scale horizontally. An in-process cache (Caffeine/Guava) lives per instance, so
+each replica keeps its own cold cache and the hit rate drops, and you inherit a
+cache-invalidation problem across instances. A shared Redis cache means one
+instance warms a key and every other instance benefits. The cost is a network hop,
+which is negligible next to the DB round-trip it avoids.
+
+**Why fail-open** — Redis is an accelerator, not a correctness dependency. If it's
+down we fall through to Postgres and still redirect correctly. Losing the cache
+degrades latency, never availability.
+
+**Why not Memcached / CDN / browser cache** — Redis has TTLs and is already in the
+stack. A CDN or browser cache would break click counting (and we already use 302,
+not 301, for exactly that reason).
+
+**When we'd add an L1** — only if a very hot key started saturating Redis or the
+network; then a small Caffeine layer in front of Redis (L1 + L2) with short TTLs
+would make sense. At this scale it's unnecessary complexity.
+
 ## 7. Observability
 
 There's a password-protected `/admin` dashboard (a terminal-styled login page,
@@ -180,6 +211,6 @@ Render's health check hits.
 |---|---|---|---|
 | Codec | permuted base64 | base62 / hash / UUID | shortest + non-guessable + no collisions |
 | Id source | DB sequence | Snowflake / Redis INCR | simple and correct; swap when scale demands |
-| Cache | Redis cache-aside | none / write-through | cheap win on the hot path, fail-open |
+| Cache | Redis cache-aside (L2) | Caffeine L1 / write-through / CDN | shared + fail-open; L1 adds per-instance invalidation |
 | Click analytics | async in-DB | Kafka + time-series | v1 simplicity; queue it when volume grows |
 | Migrations | `ddl-auto: update` + `schema.sql` | Flyway/Liquibase | fine for a demo; switch for real releases |

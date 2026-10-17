@@ -89,6 +89,20 @@ just falls through to Postgres instead of erroring — so Redis is an accelerato
 not a hard dependency. That's a real availability decision: losing the cache
 degrades latency, not correctness.
 
+## What cache type/level did you use, and why not a local one?
+
+It's a remote, distributed cache (L2) using Redis in a cache-aside pattern — no L1
+in-process cache. Cache-aside because reads dominate and it only warms keys people
+actually click, and it fails open so Redis is an accelerator, not a hard
+dependency.
+
+No L1 (Caffeine/Guava) because the service is stateless and horizontally scaled:
+a per-instance cache means every replica keeps its own cold cache and you get a
+cross-instance invalidation problem. A shared Redis cache means one instance warms
+a key and everyone else benefits. I'd only add a small Caffeine L1 in front of
+Redis if a single very hot key started saturating Redis — that's an optimization,
+not a default.
+
 ## How does idempotency work?
 
 Each URL is hashed with SHA-256, and `url_hash` has a unique index. On create I
