@@ -10,5 +10,8 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Render health endpoint
-        run: curl -fsS --max-time 90 https://snip.soumikseth.in/actuator/health
+      - name: Wake Render instance (cold start can exceed 90s)
+        run: curl -sS --max-time 240 https://snip.soumikseth.in/actuator/health || true
+
+      - name: Verify health
+        run: curl -fsS --retry 3 --retry-all-errors --retry-delay 15 https://snip.soumikseth.in/actuator/health
