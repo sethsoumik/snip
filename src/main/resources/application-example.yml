@@ -38,11 +38,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health
   endpoint:
     health:
       probes:
         enabled: true
+      show-details: never
 
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
